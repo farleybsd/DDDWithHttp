@@ -48,6 +48,13 @@ src/
       RegistrarSinistro/          Request + Validator + Handler + Endpoint (POST /sinistros)
       ConsultarSinistro/          Endpoint + Handler (GET /sinistros/{id})
       ListarSinistrosPorApolice/  Endpoint + Handler (GET /apolices/{apoliceId}/sinistros)
+      ConsultarApoliceDoSinistro/ Endpoint + Handler (GET /sinistros/{id}/apolice) — lê o sinistro
+                                  local e consulta a apólice vinculada na API de Apólices
+    Contracts/ApoliceDoSinistroResponse.cs
+    appsettings.json              padrões comuns (sem endereço fixo da API de Apólices)
+    appsettings.Development.json  BaseUrl = http://localhost:5201
+    appsettings.QAS.json          BaseUrl do ambiente de QAS
+    appsettings.Production.json   BaseUrl do ambiente de produção
     Common/Result.cs
 tests/
   Apolices.Domain.Tests/         regras de PeriodoVigencia e Apolice
@@ -84,8 +91,14 @@ acoplamento via "shared kernel" por causa de um utilitário tão pequeno.
    - que a apólice existe (senão, `404`);
    - que ela estava vigente na data da ocorrência (senão, `422`);
    - que possui a cobertura solicitada (senão, `422`).
-3. A comunicação é **unidirecional**: Sinistros conhece Apólices; o contrário nunca acontece.
-4. Se a API de Apólices estiver indisponível (mesmo após timeout/retry/circuit breaker), o
+3. **Sinistros** também expõe `GET /sinistros/{id}/apolice`: lê o sinistro no seu próprio
+   repositório e busca a apólice vinculada **ao vivo** em `Apolices.Api` (`GET /apolices/{id}`),
+   devolvendo vigência e coberturas já traduzidas para o vocabulário de Sinistros, mais duas
+   conclusões do domínio (se a apólice estava vigente na data da ocorrência e se possui a
+   cobertura do sinistro). Este contexto guarda apenas o `ApoliceId` — nunca uma cópia dos dados
+   do contexto de Apólices, que poderia ficar desatualizada.
+4. A comunicação é **unidirecional**: Sinistros conhece Apólices; o contrário nunca acontece.
+5. Se a API de Apólices estiver indisponível (mesmo após timeout/retry/circuit breaker), o
    sinistro **não é registrado** — a API responde `503` com uma mensagem clara.
 
 ## Resiliência (Sinistros → Apólices)
@@ -96,7 +109,7 @@ Configurada em `Sinistros.Api/Program.cs` com `IHttpClientFactory` + cliente tip
 
 ```json
 "ApolicesApi": {
-  "BaseUrl": "http://localhost:5201",
+  "BaseUrl": "http://localhost:5201",   // vem do appsettings do ambiente — veja a seção abaixo
   "Timeout": "00:00:02",
   "Retry": { "MaxRetryAttempts": 3, "BaseDelay": "00:00:00.500" },
   "CircuitBreaker": {
@@ -127,6 +140,60 @@ próprio timeout individual.
   (`ApoliceConsultaResultado.NaoEncontrada` vs. `Indisponivel`), permitindo que o caso de uso
   responda com o código HTTP correto (404 vs. 503).
 
+## Endereço da API de Apólices por ambiente
+
+O endereço da API de Apólices **não é fixo no código**: `ApolicesApiOptions.BaseUrl` é resolvido
+em tempo de execução pela cadeia de configuração do ASP.NET Core, na ordem
+
+`appsettings.json` → `appsettings.{ASPNETCORE_ENVIRONMENT}.json` → variáveis de ambiente →
+argumentos de linha de comando
+
+(cada etapa sobrescreve a anterior). O mesmo binário/imagem, portanto, aponta para um endereço
+diferente em cada ambiente, sem recompilação:
+
+| `ASPNETCORE_ENVIRONMENT` | Arquivo                       | `ApolicesApi:BaseUrl`                   |
+|--------------------------|-------------------------------|------------------------------------------|
+| `Development` (padrão do `launchSettings.json`) | `appsettings.Development.json` | `http://localhost:5201`         |
+| `QAS`                    | `appsettings.QAS.json`        | `https://apolices.qas.seguros.example/`  |
+| `Production`             | `appsettings.Production.json` | `https://apolices.seguros.example/`      |
+
+> Os endereços de QAS e produção são **placeholders** deste projeto didático — troque-os pelos
+> endereços reais, ou sobrescreva-os no deploy (veja abaixo).
+
+O `appsettings.json` base deixa `BaseUrl` vazio de propósito: o endereço é responsabilidade do
+ambiente. Para acrescentar um ambiente novo (`Staging`, `HML`, …), basta criar
+`appsettings.{Nome}.json` com a seção `ApolicesApi` e subir a aplicação com
+`ASPNETCORE_ENVIRONMENT={Nome}`.
+
+**Sobrescrita sem novo build** (o que normalmente se usa em QAS/PRD, via variável de ambiente do
+contêiner, do App Service ou do Kubernetes):
+
+```bash
+# Linux/contêiner
+ASPNETCORE_ENVIRONMENT=QAS ApolicesApi__BaseUrl=https://apolices.qas.interno/ dotnet Sinistros.Api.dll
+
+# PowerShell (Windows)
+$env:ASPNETCORE_ENVIRONMENT = "QAS"; $env:ApolicesApi__BaseUrl = "https://apolices.qas.interno/"
+dotnet run --project src/Sinistros.Api --no-launch-profile
+```
+
+(o duplo sublinhado `__` é o separador de seção usado por variáveis de ambiente.)
+
+**Falha rápida:** o binding é validado com `ValidateOnStart()` — se o ambiente subir sem um
+`BaseUrl` http(s) absoluto, a aplicação **não inicia** e a mensagem diz exatamente o que falta,
+em vez de só quebrar na primeira requisição:
+
+```
+OptionsValidationException: 'ApolicesApi:BaseUrl' precisa ser uma URL http(s) absoluta.
+Defina-a no appsettings.{ASPNETCORE_ENVIRONMENT}.json do ambiente ou na variável de ambiente
+'ApolicesApi__BaseUrl'.
+```
+
+**Endereço com caminho:** o `BaseUrl` recebe uma barra final automaticamente e as rotas do cliente
+são relativas (`apolices/{id}`, sem barra inicial). Assim um endereço atrás de gateway como
+`https://gateway.qas.interno/apolices-api` gera
+`https://gateway.qas.interno/apolices-api/apolices/{id}` — e não descarta o caminho do gateway.
+
 ## Como executar
 
 **Visual Studio:** abra `DDDWithHttp.sln` e aperte **F5**. A solução já vem configurada para
@@ -155,6 +222,9 @@ curl http://localhost:5201/apolices
 curl -X POST http://localhost:5301/sinistros \
   -H "Content-Type: application/json" \
   -d '{"apoliceId":"11111111-1111-1111-1111-111111111111","dataOcorrencia":"2026-06-01","tipoCobertura":"Colisao","descricao":"Colisão na Av. Paulista"}'
+
+# a resposta traz o "id" do sinistro; use-o para consultar a apólice vinculada:
+curl http://localhost:5301/sinistros/{id}/apolice
 ```
 
 ### Dados fictícios (seed em memória, perdidos ao reiniciar)
@@ -185,7 +255,12 @@ dotnet test DDDWithHttp.sln
      registradas no handler de teste);
   5. falhas persistentes → o circuito abre e a chamada seguinte falha rápido, sem nova tentativa
      de rede (`503`, número de chamadas ao handler congelado);
-  6. resposta mais lenta que o timeout configurado → tratado como indisponibilidade (`503`).
+  6. resposta mais lenta que o timeout configurado → tratado como indisponibilidade (`503`);
+  7. `GET /sinistros/{id}/apolice`: sucesso (`200`), sinistro inexistente (`404`, sem chamar a API
+     de Apólices), apólice que sumiu do outro contexto (`404`) e API de Apólices fora do ar
+     (`503`);
+  8. montagem da URL de consulta a partir do `ApolicesApi:BaseUrl` do ambiente — inclusive com
+     endereço contendo caminho (gateway), garantindo que nada fica fixo no código.
 
 ## Demonstração reproduzível de retry / timeout / circuit breaker
 

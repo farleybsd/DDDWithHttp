@@ -11,6 +11,7 @@ builder.Services.AddSingleton<ISinistroRepository, InMemorySinistroRepository>()
 builder.Services.AddScoped<Sinistros.Api.Features.RegistrarSinistro.Handler>();
 builder.Services.AddScoped<Sinistros.Api.Features.ConsultarSinistro.Handler>();
 builder.Services.AddScoped<Sinistros.Api.Features.ListarSinistrosPorApolice.Handler>();
+builder.Services.AddScoped<Sinistros.Api.Features.ConsultarApoliceDoSinistro.Handler>();
 
 builder.Services.AddApolicesApiClient(builder.Configuration);
 

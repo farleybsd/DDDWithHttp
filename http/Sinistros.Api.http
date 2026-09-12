@@ -50,6 +50,13 @@ GET {{baseUrl}}/sinistros/00000000-0000-0000-0000-000000000000
 ### Listar sinistros vinculados a uma apólice
 GET {{baseUrl}}/apolices/11111111-1111-1111-1111-111111111111/sinistros
 
+### Consultar a apólice vinculada a um sinistro (consulta ao vivo a API de Apólices via HTTP)
+### Substitua {id} pelo identificador retornado pela requisição de sucesso acima.
+GET {{baseUrl}}/sinistros/00000000-0000-0000-0000-000000000000/apolice
+
+### Consultar a apólice de um sinistro inexistente -> 404
+GET {{baseUrl}}/sinistros/99999999-9999-9999-9999-999999999999/apolice
+
 ### --- Demonstração manual de resiliência ---
 ### 1. Pare a API de Apólices (Ctrl+C no terminal onde ela roda).
 ### 2. Reenvie a requisição de sucesso abaixo e observe no console da API de Sinistros os logs de

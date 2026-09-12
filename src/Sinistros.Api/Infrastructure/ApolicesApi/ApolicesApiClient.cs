@@ -17,7 +17,10 @@ public sealed class ApolicesApiClient(HttpClient httpClient, ILogger<ApolicesApi
     {
         try
         {
-            using var response = await httpClient.GetAsync($"/apolices/{apoliceId}", cancellationToken);
+            // Rota relativa (sem barra inicial): o endereço base vem do ambiente atual
+            // (ApolicesApiOptions.BaseUrl) e pode conter um caminho, que seria descartado por uma
+            // barra inicial aqui.
+            using var response = await httpClient.GetAsync($"apolices/{apoliceId}", cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
                 return new ApoliceConsultaResultado.NaoEncontrada();
