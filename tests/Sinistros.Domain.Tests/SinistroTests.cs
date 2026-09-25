@@ -41,7 +41,7 @@ public class SinistroTests
             apolice);
 
         Assert.True(resultado.IsFailure);
-        Assert.Contains("vigente", resultado.Error);
+        Assert.Equal("apolice-fora-de-vigencia", resultado.Error!.Codigo);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class SinistroTests
             apolice);
 
         Assert.True(resultado.IsFailure);
-        Assert.Contains("cobertura", resultado.Error);
+        Assert.Equal("cobertura-nao-contratada", resultado.Error!.Codigo);
     }
 
     [Fact]

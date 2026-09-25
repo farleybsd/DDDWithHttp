@@ -3,9 +3,11 @@ using FastEndpoints.OpenApi;
 using Sinistros.Api.Domain;
 using Sinistros.Api.Infrastructure;
 using Sinistros.Api.Infrastructure.ApolicesApi;
+using Sinistros.Api.Infrastructure.Erros;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddProblemDetailsRfc9457();
 builder.Services.AddFastEndpoints().OpenApiDocument(o => o.DocumentName = "v1");
 builder.Services.AddSingleton<ISinistroRepository, InMemorySinistroRepository>();
 builder.Services.AddScoped<Sinistros.Api.Features.RegistrarSinistro.Handler>();
@@ -17,7 +19,8 @@ builder.Services.AddApolicesApiClient(builder.Configuration);
 
 var app = builder.Build();
 
-app.UseFastEndpoints();
+app.UseProblemDetailsRfc9457();
+app.UseFastEndpoints(c => c.Errors.UseProblemDetailsRfc9457());
 app.MapOpenApi();
 app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "Sinistros API v1"));
 

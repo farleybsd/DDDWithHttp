@@ -1,22 +1,8 @@
+using Sinistros.Api.Common;
 using Sinistros.Api.Contracts;
 using Sinistros.Api.Domain;
 
 namespace Sinistros.Api.Features.ConsultarApoliceDoSinistro;
-
-/// <summary>
-/// Resultado do caso de uso, distinguindo os motivos de falha para que o Endpoint escolha o
-/// código HTTP correto (404 ou 503).
-/// </summary>
-public abstract record HandlerResultado
-{
-    public sealed record Sucesso(ApoliceDoSinistroResponse Response) : HandlerResultado;
-
-    public sealed record SinistroNaoEncontrado : HandlerResultado;
-
-    public sealed record ApoliceNaoEncontrada : HandlerResultado;
-
-    public sealed record ServicoIndisponivel(string Motivo) : HandlerResultado;
-}
 
 /// <summary>
 /// Dado um sinistro já registrado, consulta a API de Apólices (<c>GET /apolices/{id}</c>) para
@@ -28,18 +14,17 @@ public sealed class Handler(
     IApolicesApiClient apolicesApiClient,
     ILogger<Handler> logger)
 {
-    public async Task<HandlerResultado> HandleAsync(Guid sinistroId, CancellationToken cancellationToken)
+    public async Task<Result<ApoliceDoSinistroResponse>> HandleAsync(Guid sinistroId, CancellationToken cancellationToken)
     {
         var sinistro = await repository.ObterPorIdAsync(sinistroId, cancellationToken);
         if (sinistro is null)
-            return new HandlerResultado.SinistroNaoEncontrado();
+            return ErrosDeSinistro.SinistroNaoEncontrado(sinistroId);
 
         var consulta = await apolicesApiClient.ConsultarApoliceAsync(sinistro.ApoliceId, cancellationToken);
 
         return consulta switch
         {
-            ApoliceConsultaResultado.Encontrada encontrada =>
-                new HandlerResultado.Sucesso(Mapear(sinistro, encontrada.Apolice)),
+            ApoliceConsultaResultado.Encontrada encontrada => Result.Success(Mapear(sinistro, encontrada.Apolice)),
 
             ApoliceConsultaResultado.NaoEncontrada => LogEApoliceNaoEncontrada(sinistro),
 
@@ -49,24 +34,24 @@ public sealed class Handler(
         };
     }
 
-    private HandlerResultado LogEApoliceNaoEncontrada(Sinistro sinistro)
+    private Result<ApoliceDoSinistroResponse> LogEApoliceNaoEncontrada(Sinistro sinistro)
     {
         logger.LogWarning(
             "O sinistro {SinistroId} referencia a apólice {ApoliceId}, que não existe mais na API de Apólices.",
             sinistro.Id,
             sinistro.ApoliceId);
 
-        return new HandlerResultado.ApoliceNaoEncontrada();
+        return ErrosDeSinistro.ApoliceNaoEncontrada(sinistro.ApoliceId);
     }
 
-    private HandlerResultado LogEIndisponivel(Sinistro sinistro, ApoliceConsultaResultado.Indisponivel indisponivel)
+    private Result<ApoliceDoSinistroResponse> LogEIndisponivel(Sinistro sinistro, ApoliceConsultaResultado.Indisponivel indisponivel)
     {
         logger.LogWarning(
             "Apólice do sinistro {SinistroId} não consultada: API de Apólices indisponível. Motivo: {Motivo}",
             sinistro.Id,
             indisponivel.Motivo);
 
-        return new HandlerResultado.ServicoIndisponivel(indisponivel.Motivo);
+        return ErrosDeSinistro.ApolicesApiIndisponivel;
     }
 
     private static ApoliceDoSinistroResponse Mapear(Sinistro sinistro, ApoliceReferenciada apolice) => new(

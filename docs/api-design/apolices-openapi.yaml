@@ -49,10 +49,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/Apolice"
         "404":
-          description: Apólice não encontrada
+          description: Apólice não encontrada (code apolice-nao-encontrada) — RFC 9457
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
 
 components:
   schemas:
+    ProblemDetails:
+      type: object
+      description: Error Report no formato RFC 9457 (application/problem+json).
+      properties:
+        type: { type: string, format: uri, example: "https://seguros.example/problemas/apolice-nao-encontrada" }
+        title: { type: string, example: "Apólice não encontrada" }
+        status: { type: integer, example: 404 }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string, example: apolice-nao-encontrada }
+        traceId: { type: string }
+      required: [type, title, status, code]
+      additionalProperties: true
     Apolice:
       type: object
       description: Parameter Tree raiz do Information Holder Resource (Master Data Holder).

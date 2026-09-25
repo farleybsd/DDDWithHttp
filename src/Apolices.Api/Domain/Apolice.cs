@@ -29,11 +29,11 @@ public sealed class Apolice
         IEnumerable<Cobertura> coberturas)
     {
         if (string.IsNullOrWhiteSpace(numero))
-            return Result.Failure<Apolice>("O número da apólice é obrigatório.");
+            return ErrosDeApolice.NumeroObrigatorio;
 
         var listaCoberturas = coberturas.ToList();
         if (listaCoberturas.Count == 0)
-            return Result.Failure<Apolice>("A apólice deve ter ao menos uma cobertura.");
+            return ErrosDeApolice.SemCobertura;
 
         return Result.Success(new Apolice(id, numero, segurado, vigencia, listaCoberturas));
     }

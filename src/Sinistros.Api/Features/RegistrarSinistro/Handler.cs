@@ -1,35 +1,21 @@
+using Sinistros.Api.Common;
 using Sinistros.Api.Contracts;
 using Sinistros.Api.Domain;
 
 namespace Sinistros.Api.Features.RegistrarSinistro;
-
-/// <summary>
-/// Resultado do caso de uso, distinguindo os motivos de falha para que o Endpoint escolha o
-/// código HTTP correto (404, 422 ou 503).
-/// </summary>
-public abstract record HandlerResultado
-{
-    public sealed record Sucesso(SinistroResponse Response) : HandlerResultado;
-
-    public sealed record ApoliceNaoEncontrada : HandlerResultado;
-
-    public sealed record ApoliceInvalida(string Motivo) : HandlerResultado;
-
-    public sealed record ServicoIndisponivel(string Motivo) : HandlerResultado;
-}
 
 public sealed class Handler(
     IApolicesApiClient apolicesApiClient,
     ISinistroRepository repository,
     ILogger<Handler> logger)
 {
-    public async Task<HandlerResultado> HandleAsync(Request request, CancellationToken cancellationToken)
+    public async Task<Result<SinistroResponse>> HandleAsync(Request request, CancellationToken cancellationToken)
     {
         var consulta = await apolicesApiClient.ConsultarApoliceAsync(request.ApoliceId, cancellationToken);
 
         return consulta switch
         {
-            ApoliceConsultaResultado.NaoEncontrada => new HandlerResultado.ApoliceNaoEncontrada(),
+            ApoliceConsultaResultado.NaoEncontrada => ErrosDeSinistro.ApoliceNaoEncontrada(request.ApoliceId),
 
             ApoliceConsultaResultado.Indisponivel indisponivel => LogEIndisponivel(request.ApoliceId, indisponivel),
 
@@ -39,28 +25,28 @@ public sealed class Handler(
         };
     }
 
-    private HandlerResultado LogEIndisponivel(Guid apoliceId, ApoliceConsultaResultado.Indisponivel indisponivel)
+    private Result<SinistroResponse> LogEIndisponivel(Guid apoliceId, ApoliceConsultaResultado.Indisponivel indisponivel)
     {
         logger.LogWarning(
             "Sinistro não registrado: API de Apólices indisponível para a apólice {ApoliceId}. Motivo: {Motivo}",
             apoliceId,
             indisponivel.Motivo);
 
-        return new HandlerResultado.ServicoIndisponivel(indisponivel.Motivo);
+        return ErrosDeSinistro.ApolicesApiIndisponivel;
     }
 
-    private async Task<HandlerResultado> RegistrarAsync(Request request, ApoliceReferenciada apolice, CancellationToken cancellationToken)
+    private async Task<Result<SinistroResponse>> RegistrarAsync(Request request, ApoliceReferenciada apolice, CancellationToken cancellationToken)
     {
         var tipoCobertura = Enum.Parse<TipoCobertura>(request.TipoCobertura, ignoreCase: true);
 
         var registro = Sinistro.Registrar(request.ApoliceId, request.DataOcorrencia, tipoCobertura, request.Descricao, apolice);
         if (registro.IsFailure)
-            return new HandlerResultado.ApoliceInvalida(registro.Error!);
+            return registro.Error!;
 
         var sinistro = registro.Value;
         await repository.AdicionarAsync(sinistro, cancellationToken);
 
-        return new HandlerResultado.Sucesso(Mapear(sinistro));
+        return Result.Success(Mapear(sinistro));
     }
 
     internal static SinistroResponse Mapear(Sinistro sinistro) => new(

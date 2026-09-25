@@ -13,12 +13,16 @@ namespace Sinistros.Api.IntegrationTests;
 /// </summary>
 public sealed class SinistrosApiFactory(
     Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder,
-    Action<ApolicesApiOptions>? sobrescreverOpcoes = null) : WebApplicationFactory<Program>
+    Action<ApolicesApiOptions>? sobrescreverOpcoes = null,
+    Action<IServiceCollection>? sobrescreverServicos = null,
+    string ambiente = "Development") : WebApplicationFactory<Program>
 {
     public ScriptedHttpMessageHandler Handler { get; } = new(responder);
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment(ambiente);
+
         builder.ConfigureTestServices(services =>
         {
             services
@@ -27,6 +31,8 @@ public sealed class SinistrosApiFactory(
 
             if (sobrescreverOpcoes is not null)
                 services.PostConfigure(sobrescreverOpcoes);
+
+            sobrescreverServicos?.Invoke(services);
         });
     }
 }

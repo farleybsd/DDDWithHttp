@@ -43,13 +43,13 @@ public sealed class Sinistro
         ApoliceReferenciada apolice)
     {
         if (string.IsNullOrWhiteSpace(descricao))
-            return Result.Failure<Sinistro>("A descrição do sinistro é obrigatória.");
+            return ErrosDeSinistro.DescricaoObrigatoria;
 
         if (!apolice.EstaVigenteEm(dataOcorrencia))
-            return Result.Failure<Sinistro>($"A apólice não estava vigente em {dataOcorrencia:yyyy-MM-dd}.");
+            return ErrosDeSinistro.ApoliceForaDeVigencia(dataOcorrencia, apolice.VigenciaInicio, apolice.VigenciaFim);
 
         if (!apolice.PossuiCobertura(tipoCobertura))
-            return Result.Failure<Sinistro>($"A apólice não possui a cobertura '{tipoCobertura}'.");
+            return ErrosDeSinistro.CoberturaNaoContratada(tipoCobertura);
 
         var sinistro = new Sinistro(
             Guid.NewGuid(),

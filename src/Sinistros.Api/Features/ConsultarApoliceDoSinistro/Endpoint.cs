@@ -1,6 +1,6 @@
 using FastEndpoints;
-using Microsoft.AspNetCore.Http;
 using Sinistros.Api.Contracts;
+using Sinistros.Api.Infrastructure.Erros;
 
 namespace Sinistros.Api.Features.ConsultarApoliceDoSinistro;
 
@@ -17,16 +17,8 @@ public sealed class Endpoint(Handler handler) : EndpointWithoutRequest<ApoliceDo
         var id = Route<Guid>("id");
         var resultado = await handler.HandleAsync(id, ct);
 
-        return resultado switch
-        {
-            HandlerResultado.Sucesso sucesso => await Send.OkAsync(sucesso.Response, ct),
-            HandlerResultado.SinistroNaoEncontrado =>
-                await Send.ResultAsync(Results.Json(new ErroResponse("Sinistro não encontrado."), statusCode: 404)),
-            HandlerResultado.ApoliceNaoEncontrada =>
-                await Send.ResultAsync(Results.Json(new ErroResponse("A apólice vinculada a este sinistro não foi encontrada na API de Apólices."), statusCode: 404)),
-            HandlerResultado.ServicoIndisponivel indisponivel =>
-                await Send.ResultAsync(Results.Json(new ErroResponse(indisponivel.Motivo), statusCode: 503)),
-            _ => throw new InvalidOperationException("Resultado de handler não tratado.")
-        };
+        return resultado.IsFailure
+            ? await Send.ResultAsync(resultado.Error!.ParaProblema())
+            : await Send.OkAsync(resultado.Value, ct);
     }
 }

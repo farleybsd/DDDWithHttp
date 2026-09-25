@@ -1,6 +1,6 @@
 using FastEndpoints;
-using Microsoft.AspNetCore.Http;
 using Sinistros.Api.Contracts;
+using Sinistros.Api.Infrastructure.Erros;
 
 namespace Sinistros.Api.Features.RegistrarSinistro;
 
@@ -16,15 +16,8 @@ public sealed class Endpoint(Handler handler) : Endpoint<Request, SinistroRespon
     {
         var resultado = await handler.HandleAsync(req, ct);
 
-        return resultado switch
-        {
-            HandlerResultado.Sucesso sucesso => await Send.ResponseAsync(sucesso.Response, 201, ct),
-            HandlerResultado.ApoliceNaoEncontrada => await Send.NotFoundAsync(ct),
-            HandlerResultado.ApoliceInvalida invalida =>
-                await Send.ResultAsync(Results.Json(new ErroResponse(invalida.Motivo), statusCode: 422)),
-            HandlerResultado.ServicoIndisponivel indisponivel =>
-                await Send.ResultAsync(Results.Json(new ErroResponse(indisponivel.Motivo), statusCode: 503)),
-            _ => throw new InvalidOperationException("Resultado de handler não tratado.")
-        };
+        return resultado.IsFailure
+            ? await Send.ResultAsync(resultado.Error!.ParaProblema())
+            : await Send.ResponseAsync(resultado.Value, 201, ct);
     }
 }

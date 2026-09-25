@@ -1,4 +1,5 @@
 using FastEndpoints;
+using ProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 using Sinistros.Api.Contracts;
 
 namespace Sinistros.Api.Features.RegistrarSinistro;
@@ -16,8 +17,8 @@ public sealed class Summary : Summary<Endpoint, Request>
         RequestParam(r => r.TipoCobertura, "Tipo de cobertura acionada (deve existir na apólice)");
         RequestParam(r => r.Descricao, "Descrição do ocorrido, até 500 caracteres");
         Response<SinistroResponse>(201, "Sinistro registrado com sucesso");
-        Response<ErroResponse>(404, "A apólice informada não foi encontrada na API de Apólices");
-        Response<ErroResponse>(422, "A apólice não estava vigente na data ou não possui a cobertura solicitada");
-        Response<ErroResponse>(503, "A API de Apólices está indisponível no momento");
+        Response<ProblemDetails>(404, "A apólice informada não foi encontrada na API de Apólices (code: apolice-nao-encontrada)", "application/problem+json");
+        Response<ProblemDetails>(422, "A apólice não estava vigente na data (code: apolice-fora-de-vigencia) ou não possui a cobertura solicitada (code: cobertura-nao-contratada)", "application/problem+json");
+        Response<ProblemDetails>(503, "A API de Apólices está indisponível no momento (code: apolices-api-indisponivel)", "application/problem+json");
     }
 }

@@ -43,7 +43,7 @@ src/
                                    ApolicesApiOptions (bind de configuração),
                                    ApolicesApiClientServiceCollectionExtensions (registra o
                                    HttpClient tipado + pipeline de resiliência em Program.cs)
-    Contracts/                    SinistroResponse, ErroResponse
+    Contracts/                    SinistroResponse
     Features/
       RegistrarSinistro/          Request + Validator + Handler + Endpoint (POST /sinistros)
       ConsultarSinistro/          Endpoint + Handler (GET /sinistros/{id})
@@ -193,6 +193,55 @@ Defina-a no appsettings.{ASPNETCORE_ENVIRONMENT}.json do ambiente ou na variáve
 são relativas (`apolices/{id}`, sem barra inicial). Assim um endereço atrás de gateway como
 `https://gateway.qas.interno/apolices-api` gera
 `https://gateway.qas.interno/apolices-api/apolices/{id}` — e não descarta o caminho do gateway.
+
+## Erros (RFC 9457 — Problem Details)
+
+As duas APIs respondem **todo** erro como `application/problem+json`, no formato da
+[RFC 9457](https://www.rfc-editor.org/info/rfc9457/) (`type`, `title`, `status`, `detail`,
+`instance` + extensões `code` e `traceId`). A configuração fica em extensões, em
+`Infrastructure/Erros/` de cada API:
+
+```csharp
+builder.Services.AddProblemDetailsRfc9457();                    // AddProblemDetails + CustomizeProblemDetails + GlobalExceptionHandler
+app.UseProblemDetailsRfc9457();                                 // UseExceptionHandler + UseStatusCodePages
+app.UseFastEndpoints(c => c.Errors.UseProblemDetailsRfc9457()); // validação -> HttpValidationProblemDetails
+```
+
+- **Erros esperados** (negócio) são valores: `Result<T>` carregando um `Erro` (`Common/Erro.cs`)
+  com `Codigo`, `Titulo` fixo, `Detalhe`, `TipoErro` e `Metadados`. Ficam em catálogos
+  (`Domain/ErrosDeApolice.cs`, `Domain/ErrosDeSinistro.cs`) e viram ProblemDetails com
+  `erro.ParaProblema()`. O status sai de um único lugar: `ErroParaHttp.ParaStatusCode`.
+- **Erros inesperados** (exceções) caem no `GlobalExceptionHandler`: a exceção completa vai para o
+  log e o cliente recebe só um 500 genérico (`code: erro-interno`) com o `traceId`.
+- `type` e `code` nunca mudam depois de publicados; mudou o significado, crie um código novo.
+
+| `code` | Status | API | Extensões |
+|---|---|---|---|
+| `validacao` | 400 | ambas | `errors` (campo → mensagens) |
+| `apolice-nao-encontrada` | 404 | ambas | `apoliceId` |
+| `sinistro-nao-encontrado` | 404 | Sinistros | `sinistroId` |
+| `apolice-fora-de-vigencia` | 422 | Sinistros | `dataOcorrencia`, `vigenciaInicio`, `vigenciaFim` |
+| `cobertura-nao-contratada` | 422 | Sinistros | `tipoCobertura` |
+| `sinistro-descricao-obrigatoria` | 400 | Sinistros | — |
+| `apolices-api-indisponivel` | 503 | Sinistros | — |
+| `apolice-numero-obrigatorio` | 400 | Apólices (domínio) | — |
+| `apolice-sem-cobertura` | 422 | Apólices (domínio) | — |
+| `erro-interno` | 500 | ambas | — |
+
+O `type` é sempre `https://seguros.example/problemas/{code}`. Exemplo:
+
+```json
+{
+  "type": "https://seguros.example/problemas/cobertura-nao-contratada",
+  "title": "Cobertura não contratada",
+  "status": 422,
+  "detail": "A apólice não possui a cobertura 'Roubo'.",
+  "instance": "/sinistros",
+  "code": "cobertura-nao-contratada",
+  "tipoCobertura": "Roubo",
+  "traceId": "00-9f1c...-01"
+}
+```
 
 ## Como executar
 

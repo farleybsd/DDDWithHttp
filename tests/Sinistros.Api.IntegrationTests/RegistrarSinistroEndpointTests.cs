@@ -34,6 +34,7 @@ public class RegistrarSinistroEndpointTests
         var response = await factory.CreateClient().PostAsJsonAsync("/sinistros", RequestValido());
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await ProblemaAssert.EhProblemaAsync(response, "apolice-nao-encontrada");
     }
 
     [Fact]
@@ -48,8 +49,8 @@ public class RegistrarSinistroEndpointTests
         var response = await factory.CreateClient().PostAsJsonAsync("/sinistros", request);
 
         Assert.Equal((HttpStatusCode)422, response.StatusCode);
-        var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
-        Assert.Contains("cobertura", erro!.Mensagem);
+        var problema = await ProblemaAssert.EhProblemaAsync(response, "cobertura-nao-contratada");
+        Assert.Equal("Roubo", problema.GetProperty("tipoCobertura").GetString());
     }
 
     [Fact]

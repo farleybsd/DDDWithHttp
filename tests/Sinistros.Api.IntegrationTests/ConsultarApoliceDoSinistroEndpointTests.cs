@@ -46,6 +46,7 @@ public class ConsultarApoliceDoSinistroEndpointTests
         var response = await factory.CreateClient().GetAsync($"/sinistros/{Guid.NewGuid()}/apolice");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await ProblemaAssert.EhProblemaAsync(response, "sinistro-nao-encontrado");
         Assert.Equal(0, factory.Handler.NumeroDeChamadas); // nem chegou a chamar a API de Apólices
     }
 
@@ -66,8 +67,8 @@ public class ConsultarApoliceDoSinistroEndpointTests
         var response = await client.GetAsync($"/sinistros/{sinistroId}/apolice");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
-        Assert.Contains("apólice", erro!.Mensagem, StringComparison.OrdinalIgnoreCase);
+        var problema = await ProblemaAssert.EhProblemaAsync(response, "apolice-nao-encontrada");
+        Assert.Equal(ApoliceId, problema.GetProperty("apoliceId").GetGuid());
     }
 
     [Fact]
@@ -94,8 +95,7 @@ public class ConsultarApoliceDoSinistroEndpointTests
         var response = await client.GetAsync($"/sinistros/{sinistroId}/apolice");
 
         Assert.Equal((HttpStatusCode)503, response.StatusCode);
-        var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
-        Assert.False(string.IsNullOrWhiteSpace(erro!.Mensagem));
+        await ProblemaAssert.EhProblemaAsync(response, "apolices-api-indisponivel");
     }
 
     private static async Task<Guid> RegistrarSinistroAsync(HttpClient client)

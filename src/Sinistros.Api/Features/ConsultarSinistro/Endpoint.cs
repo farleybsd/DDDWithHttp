@@ -1,5 +1,6 @@
 using FastEndpoints;
 using Sinistros.Api.Contracts;
+using Sinistros.Api.Infrastructure.Erros;
 
 namespace Sinistros.Api.Features.ConsultarSinistro;
 
@@ -16,8 +17,8 @@ public sealed class Endpoint(Handler handler) : EndpointWithoutRequest<SinistroR
         var id = Route<Guid>("id");
         var resultado = await handler.HandleAsync(id, ct);
 
-        return resultado is null
-            ? await Send.NotFoundAsync(ct)
-            : await Send.OkAsync(resultado, ct);
+        return resultado.IsFailure
+            ? await Send.ResultAsync(resultado.Error!.ParaProblema())
+            : await Send.OkAsync(resultado.Value, ct);
     }
 }

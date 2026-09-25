@@ -1,4 +1,5 @@
 using Apolices.Api.Contracts;
+using Apolices.Api.Infrastructure.Erros;
 using FastEndpoints;
 
 namespace Apolices.Api.Features.ConsultarApolice;
@@ -16,8 +17,8 @@ public sealed class Endpoint(Handler handler) : EndpointWithoutRequest<ApoliceRe
         var id = Route<Guid>("id");
         var resultado = await handler.HandleAsync(id, ct);
 
-        return resultado is null
-            ? await Send.NotFoundAsync(ct)
-            : await Send.OkAsync(resultado, ct);
+        return resultado.IsFailure
+            ? await Send.ResultAsync(resultado.Error!.ParaProblema())
+            : await Send.OkAsync(resultado.Value, ct);
     }
 }

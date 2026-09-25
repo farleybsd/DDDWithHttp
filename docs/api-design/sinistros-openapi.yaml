@@ -34,21 +34,21 @@ paths:
         "404":
           description: Apólice referenciada (Link Element) não encontrada — Error Report
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErroResponse"
+                $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: Apólice não vigente ou sem a cobertura solicitada — Error Report
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErroResponse"
+                $ref: "#/components/schemas/ProblemDetails"
         "503":
           description: API de Apólices indisponível — Error Report
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErroResponse"
+                $ref: "#/components/schemas/ProblemDetails"
 
   /sinistros/{id}:
     get:
@@ -115,15 +115,15 @@ paths:
         "404":
           description: Sinistro ou apólice vinculada não encontrados — Error Report
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErroResponse"
+                $ref: "#/components/schemas/ProblemDetails"
         "503":
           description: API de Apólices indisponível — Error Report
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErroResponse"
+                $ref: "#/components/schemas/ProblemDetails"
 
 components:
   parameters:
@@ -229,10 +229,34 @@ components:
         - vigenteNaDataOcorrencia
         - possuiCoberturaDoSinistro
 
-    ErroResponse:
+    ProblemDetails:
       type: object
-      description: Error Report
+      description: >
+        Error Report no formato RFC 9457 (Problem Details for HTTP APIs), servido como
+        application/problem+json. `type` e `code` são estáveis e identificam a classe do erro;
+        `title` é fixo por tipo; `detail` é texto para humanos e pode mudar. Dados da ocorrência
+        (ex.: apoliceId, tipoCobertura) vêm como extensões estruturadas.
       properties:
-        mensagem:
+        type:
           type: string
-      required: [mensagem]
+          format: uri
+          example: https://seguros.example/problemas/cobertura-nao-contratada
+        title:
+          type: string
+          example: Cobertura não contratada
+        status:
+          type: integer
+          example: 422
+        detail:
+          type: string
+          example: A apólice não possui a cobertura 'Roubo'.
+        instance:
+          type: string
+          example: /sinistros
+        code:
+          type: string
+          example: cobertura-nao-contratada
+        traceId:
+          type: string
+      required: [type, title, status, code]
+      additionalProperties: true
