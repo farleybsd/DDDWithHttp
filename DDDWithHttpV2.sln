@@ -1,0 +1,50 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8E4B1C2A-5D3F-4A6B-9C7D-1E2F3A4B5C6D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		README.md = README.md
+		http\Seguros.http = http\Seguros.http
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{65B7A64F-63EF-42E7-800B-60D237920E0B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D25F05B7-BF00-41A6-B66E-F308B336FF21}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seguros", "src\Seguros\Seguros.csproj", "{24713C85-144B-44C4-9DE9-A3BE344CCFEE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seguros.UnitTests", "tests\Seguros.UnitTests\Seguros.UnitTests.csproj", "{7DACD2AE-9892-42C5-843E-54F04F0033AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seguros.IntegrationTests", "tests\Seguros.IntegrationTests\Seguros.IntegrationTests.csproj", "{D7126192-615E-413D-AF06-A064A7E0AC49}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{24713C85-144B-44C4-9DE9-A3BE344CCFEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24713C85-144B-44C4-9DE9-A3BE344CCFEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24713C85-144B-44C4-9DE9-A3BE344CCFEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24713C85-144B-44C4-9DE9-A3BE344CCFEE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DACD2AE-9892-42C5-843E-54F04F0033AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DACD2AE-9892-42C5-843E-54F04F0033AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DACD2AE-9892-42C5-843E-54F04F0033AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DACD2AE-9892-42C5-843E-54F04F0033AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7126192-615E-413D-AF06-A064A7E0AC49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7126192-615E-413D-AF06-A064A7E0AC49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7126192-615E-413D-AF06-A064A7E0AC49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7126192-615E-413D-AF06-A064A7E0AC49}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{24713C85-144B-44C4-9DE9-A3BE344CCFEE} = {65B7A64F-63EF-42E7-800B-60D237920E0B}
+		{7DACD2AE-9892-42C5-843E-54F04F0033AF} = {D25F05B7-BF00-41A6-B66E-F308B336FF21}
+		{D7126192-615E-413D-AF06-A064A7E0AC49} = {D25F05B7-BF00-41A6-B66E-F308B336FF21}
+	EndGlobalSection
+EndGlobal
